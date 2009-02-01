@@ -13,39 +13,48 @@ require 'uri'
 require 'find'
 require 'date'
 
-def opmlline(infoplist, topic)
+def opmlline(infoplist, text)
 	output = ""
 	infopliststr = infoplist.read
 	 infopliststr.scan(URI.regexp) do |*matches|
 	 	if $& != "http://www.apple.com/DTDs/PropertyList-1.0.dtd"
-	 			output += "<outline text=\"#{topic}\">"
-    			output += "<outline title=\"#{$&}\" text=\"#{$&}\" type=\"rss\" xmlUrl=\"#{$&}\" />"
-				output +=  "</outline>\n\n"
+        output << "<outline title=\"#{text}\" text=\"#{text}\" type=\"rss\" xmlUrl=\"#{$&}\" />"
 		end
  	 end
 	return output
 end
 
 def writeopml(opmllines)
-	 f = File.new("rssfeeds.opml",  "a")
-	 f.puts "<?xml version=\"1.0\" encoding=\"utf-8\" ?><opml version=\"1.1\"> <head>   <title>RSS Feeds</title>   <dateCreated>#{Date.new.to_s}</dateCreated></head><body>" + opmllines + "</body></opml>"
-	 opmlfilepath =  Dir.pwd + "/" + f.path
-	 f.close
-	 return opmlfilepath
+	 File.open("rssfeeds.opml",  "a") do |f|
+     f.puts "<?xml version=\"1.0\" encoding=\"utf-8\" ?><opml version=\"1.1\"> <head>   <title>RSS Feeds</title>   <dateCreated>#{Date.new.to_s}</dateCreated></head><body>"
+     opmllines.each_pair do |folders, opmldata|
+       folders.scan(/(.*?)\//).each do |folder|
+         f.puts %Q[<outline title="#{folder}" text="#{folder}">]
+       end
+
+       f.puts opmldata
+
+       f.puts %Q[</outline>\n\n]*folders.count("/")
+     end
+     f.puts "</body></opml>"
+     return Dir.pwd + "/" + f.path
+   end
 end
 
-namere = /RSS\/(.*?)\//
+namere = /RSS\/(.*?\/)+(.*?)\.rssmbox\/Info.plist/
 path = File.expand_path("~/Library/Mail/RSS/")
-opmllines = ""
-Find.find(path) { |p1| 
-	if (p1.include? "Info.plist")
-		st = namere.match(p1).to_s
-		topic = st.to_s[4..(st.length-2)]
-		p1file = File.new(p1.to_s, "r")
-		opmllines += opmlline(p1file, topic)
-		p1file.close
+opmllines = Hash.new
+Find.find(path) do |p1| 
+	if m=p1.match(namere)
+    folders = m[1].freeze
+    text    = m[2]
+    opmllines[folders] ||= ""
+    lines = ""
+		File.open(p1.to_s, "r") do |p1file|
+      opmllines[folders] << opmlline(p1file, text)
+    end
 	end
-}
+end
 
 opmlfilepath = writeopml(opmllines)
 puts "The location of your OPML file is: #{opmlfilepath}"
