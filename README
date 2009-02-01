@@ -1,0 +1,6 @@
+MailAppToOpml
+-------------
+
+Simply converts the RSS/Atom Newsfeeds that you have subscribed to using Mail.app and then turns it into OPML, so that it can be used in other news readers.
+
+Fork'd http://code.google.com/p/mailapptoopml/ to improve folder handling.
